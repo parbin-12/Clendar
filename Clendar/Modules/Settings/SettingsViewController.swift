@@ -13,6 +13,7 @@ import WidgetKit
 import EventKitUI
 import SwiftUI
 import SafariServices
+import ClendarTheme
 
 // TODO: Convert settings to SwiftUI
 // https://swiftwithmajid.com/2019/06/19/building-forms-with-swiftui/
@@ -246,6 +247,34 @@ final class SettingsViewController: FormViewController {
         .title(NSLocalizedString("Custom App Icon", comment: ""))
         .viewController(AppIconChooserViewController.self)
 
+    lazy var travelMode: OptionPickerFormItem = {
+        let instance = OptionPickerFormItem()
+        instance.title(NSLocalizedString("Travel mode", comment: ""))
+        instance.append(TravelMode.titles)
+
+        let title = TravelMode(rawValue: SettingsManager.travelMode)?.localizedText ?? TravelMode.defaultValue.localizedText
+        instance.selectOptionWithTitle(title)
+        instance.valueDidChange = { selected in
+            guard let selected = selected else { return }
+
+            genLightHaptic()
+
+            // decode selected mode
+            let mode = TravelMode.mapFromText(selected.title)
+            SettingsManager.travelMode = mode.rawValue
+
+            // save widget config to app group container file
+            let url = FileManager.appGroupContainerURL.appendingPathComponent(FileManager.travelMode)
+            try? mode.rawValue.write(to: url, atomically: false, encoding: .utf8)
+
+            // reload widget center
+            Constants.WidgetKind.allCases.forEach { kind in
+                WidgetCenter.shared.reloadTimelines(ofKind: kind.rawValue)
+            }
+        }
+        return instance
+    }()
+
     lazy var writeReviewButton: ButtonFormItem = {
         let instance = ButtonFormItem()
         instance.title = "✍️ " + NSLocalizedString("Rate Clendar", comment: "")
@@ -408,6 +437,7 @@ final class SettingsViewController: FormViewController {
         builder += SectionHeaderTitleFormItem().title(NSLocalizedString("General", comment: ""))
         builder += themes
         builder += widgetTheme
+        builder += travelMode
 #if !targetEnvironment(macCatalyst)
         builder += customAppIcon
         builder += enableHapticFeedback

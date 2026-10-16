@@ -8,6 +8,7 @@
 
 import EventKit
 import SwiftUI
+import ClendarTheme
 
 struct EventViewer: View {
     var event: ClendarEvent
@@ -87,6 +88,11 @@ struct EventViewer: View {
                             MapWrapperView(location: Location(coordinate: coordinate))
                         }
                     }
+
+                    if event.location != nil || event.structuredLocation != nil {
+                        Divider()
+                        TravelTimeSection(event: event)
+                    }
                     #endif
                 }
             }
@@ -107,6 +113,66 @@ struct EventViewer: View {
         .modifier(EventViewerPaddingModifier())
     }
 }
+
+#if !os(watchOS)
+// Travel time to the appointment (issue #176). The mode picker here is
+// local to this screen. The global default lives in Settings.
+private struct TravelTimeSection: View {
+    let event: EKEvent
+
+    @State private var modeRaw: String = SettingsManager.travelMode
+    @State private var etaText: String?
+    @State private var leaveText: String?
+
+    private var mode: TravelMode {
+        TravelMode(rawValue: modeRaw) ?? TravelMode.defaultValue
+    }
+
+    var body: some View {
+        InfoWrapView(config: InfoWrapView.InfoViewConfig(title: "Travel time", titleImageName: mode.systemImageName)) {
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("Mode", selection: $modeRaw) {
+                    ForEach(TravelMode.allCases, id: \.self) { item in
+                        Text(item.localizedText).tag(item.rawValue)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                if let etaText = etaText {
+                    Text(etaText).modifier(MediumTextModifider())
+                }
+                if let leaveText = leaveText {
+                    Text(leaveText).modifier(MediumTextModifider())
+                }
+            }
+        }
+        .task(id: modeRaw) {
+            await load()
+        }
+    }
+
+    private func load() async {
+        etaText = nil
+        leaveText = nil
+        let current = mode
+        guard let destination = await TravelTimeProvider.coordinate(for: event, allowGeocode: true),
+              let origin = await TravelTimeProvider.currentLocation() else {
+            etaText = NSLocalizedString("Location unavailable", comment: "")
+            return
+        }
+        guard let eta = await TravelTimeProvider.eta(from: origin.coordinate, to: destination, mode: current) else {
+            etaText = NSLocalizedString("Route unavailable", comment: "")
+            return
+        }
+        etaText = eta.displayText(mode: current)
+        let leaveDate = event.startDate.addingTimeInterval(-eta.seconds)
+        if leaveDate <= Date() {
+            leaveText = NSLocalizedString("Leave now", comment: "")
+        } else {
+            leaveText = NSLocalizedString("Leave at ", comment: "") + leaveDate.toHourAndMinuteString()
+        }
+    }
+}
+#endif
 
 // swiftlint:disable:next private_over_fileprivate
 fileprivate struct EventViewerPaddingModifier: ViewModifier {
