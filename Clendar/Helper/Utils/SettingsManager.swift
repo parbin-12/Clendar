@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftUI
+import ClendarTheme
 
 struct SettingsManager {
     @UserDefault(key: "currentAppTheme", defaultValue: AppTheme.defaultValue.rawValue)
@@ -39,6 +40,9 @@ struct SettingsManager {
 
     @UserDefault(key: "widgetTheme", defaultValue: WidgetTheme.defaultValue.rawValue)
     static var widgetTheme: Int
+
+    @UserDefault(key: "travelMode", defaultValue: TravelMode.defaultValue.rawValue)
+    static var travelMode: String
 }
 
 extension SettingsManager {
