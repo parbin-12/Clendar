@@ -28,7 +28,11 @@ struct WidgetBackgroundView: View {
     }
 
     private var widgetThemeFromFile: Int {
-        let url = FileManager.appGroupContainerURL.appendingPathComponent(FileManager.widgetTheme)
+        // Nil container (missing entitlements) or missing file falls back
+        // to the default theme instead of crashing the extension, which
+        // WidgetKit would render as a blank/white widget (issue #268).
+        guard let containerURL = FileManager.appGroupContainerURL else { return 0 }
+        let url = containerURL.appendingPathComponent(FileManager.widgetTheme)
         guard let value = try? String(contentsOf: url, encoding: .utf8) else { return 0 }
         return value.parseInt() ?? 0
     }
