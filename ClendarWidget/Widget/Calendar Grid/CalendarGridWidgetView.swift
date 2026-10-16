@@ -132,16 +132,32 @@ struct CalendarGridView<DateView>: View where DateView: View {
 	}
 
 	private func daysGridView() -> some View {
-		LazyVGrid(columns: Array(repeating: GridItem(), count: 7)) {
-			ForEach(months, id: \.self) { month in
-				ForEach(days(for: month), id: \.self) { date in
-					if calendar.isDate(date, equalTo: month, toGranularity: .month) {
-						content(date).id(date)
-					} else {
-						content(date).hidden()
+		// NOTE: eager VStack/HStack on purpose. Lazy stacks need a scroll
+		// context and render blank/white inside WidgetKit on iOS 17
+		// (issue #268). Widgets are static, so eager stacks are correct.
+		let rows = monthDayRows()
+		return VStack(spacing: 0) {
+			ForEach(0 ..< rows.count, id: \.self) { rowIndex in
+				HStack {
+					ForEach(0 ..< rows[rowIndex].count, id: \.self) { colIndex in
+						let item = rows[rowIndex][colIndex]
+						if calendar.isDate(item.date, equalTo: item.month, toGranularity: .month) {
+							content(item.date).id(item.date)
+						} else {
+							content(item.date).hidden()
+						}
 					}
 				}
 			}
+		}
+	}
+
+	private func monthDayRows() -> [[(month: Date, date: Date)]] {
+		let allDays = months.flatMap { month in
+			days(for: month).map { (month: month, date: $0) }
+		}
+		return stride(from: 0, to: allDays.count, by: 7).map { start in
+			Array(allDays[start ..< min(start + 7, allDays.count)])
 		}
 	}
 

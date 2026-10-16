@@ -113,7 +113,9 @@ struct EventsListWidgetView: View {
         if entry.events.isEmpty {
             EventEmptyView()
         } else {
-            LazyVStack(alignment: .leading, spacing: 10) {
+            // NOTE: eager VStack. LazyVStack has no scroll context in
+            // WidgetKit and renders blank/white on iOS 17 (issue #268).
+            VStack(alignment: .leading, spacing: 10) {
                 Section(
                     header:
                         Text(entry.date.toFullDateString().localizedUppercase)

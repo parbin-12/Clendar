@@ -231,8 +231,10 @@ final class SettingsViewController: FormViewController {
             SettingsManager.widgetTheme = theme.rawValue
 
             // save widget config to app group container file
-            let url = FileManager.appGroupContainerURL.appendingPathComponent(FileManager.widgetTheme)
-            try? String(theme.rawValue).write(to: url, atomically: false, encoding: .utf8)
+            if let containerURL = FileManager.appGroupContainerURL {
+                let url = containerURL.appendingPathComponent(FileManager.widgetTheme)
+                try? String(theme.rawValue).write(to: url, atomically: false, encoding: .utf8)
+            }
 
             // reload widget center
             Constants.WidgetKind.allCases.forEach { kind in
