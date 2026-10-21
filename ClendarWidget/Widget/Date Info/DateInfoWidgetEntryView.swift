@@ -124,7 +124,7 @@ struct EventsListWidgetView: View {
                 ) {
                     let events = entry.events.prefix(minimizeContents ? 3 : 6)
                     ForEach(events, id: \.self) { event in
-                        WidgetEventRow(event: event)
+                        WidgetEventRow(event: event, travelSeconds: entry.travelSeconds(for: event), travelMode: entry.travelMode)
                     }
                 }
             }.padding(10)

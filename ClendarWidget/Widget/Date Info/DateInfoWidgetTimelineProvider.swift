@@ -9,6 +9,7 @@
 import SwiftUI
 import WidgetKit
 import Shift
+import ClendarTheme
 
 // Reference: https://wwdcbysundell.com/2020/getting-started-with-widgetkit/
 
@@ -36,10 +37,25 @@ struct DateInfoWidgetTimelineProvider: TimelineProvider {
             // date grid always renders instead of going white.
             let events = (try? await Shift.shared.fetchEventsRangeUntilEndOfDay(from: currentDate)) ?? []
             let clendarEvents = events.compactMap(ClendarEvent.init)
-            let entry = WidgetEntry(date: currentDate, events: clendarEvents)
+            var entry = WidgetEntry(date: currentDate, events: clendarEvents)
+            // Travel times are best effort. Any failure leaves the entry
+            // without them and the rows render as before (issue #176).
+            let mode = widgetTravelMode()
+            entry.travelMode = mode
+            entry.travelTimes = await TravelTimeProvider.travelTimes(for: events, mode: mode)
             let timeline = Timeline(entries: [entry], policy: .after(interval))
             completion(timeline)
         }
+    }
+
+    /// Travel mode chosen in Settings, shared via the app group file.
+    private func widgetTravelMode() -> TravelMode {
+        guard let containerURL = FileManager.appGroupContainerURL else { return TravelMode.defaultValue }
+        let url = containerURL.appendingPathComponent(FileManager.travelMode)
+        guard let value = try? String(contentsOf: url, encoding: .utf8) else {
+            return TravelMode.defaultValue
+        }
+        return TravelMode(rawValue: value.trimmingCharacters(in: .whitespacesAndNewlines)) ?? TravelMode.defaultValue
     }
 
     func placeholder(in _: Context) -> WidgetEntry {

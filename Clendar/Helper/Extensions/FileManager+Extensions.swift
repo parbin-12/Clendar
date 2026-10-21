@@ -19,4 +19,5 @@ extension FileManager {
 
 extension FileManager {
     static let widgetTheme = "widgetTheme.txt"
+    static let travelMode = "travelMode.txt"
 }
