@@ -6,9 +6,11 @@
 //  Copyright © 2020 Vinh Nguyen. All rights reserved.
 //
 
+import ClendarTheme
 import EventKit
 import SwiftUI
 import Shift
+import UIKit
 
 struct QuickEventView: View {
     @Environment(\.presentationMode) var presentationMode
@@ -62,14 +64,15 @@ struct QuickEventView: View {
                 VStack(spacing: 30) {
                     Spacer()
 
-                    TextField( NSLocalizedString("read a book this Friday 8PM...", comment: ""), text: $quickEventStore.searchText)
-                        .accessibility(label: Text("Input event"))
-                        .font(.regularFontWithSize(18))
-                        .foregroundColor(.appDark)
-                        .submitLabel(.done)
-                        .onSubmit(of: .text) {
+                    InlinePredictionTextField(
+                        text: $quickEventStore.searchText,
+                        placeholder: NSLocalizedString("read a book this Friday 8PM...", comment: ""),
+                        onSubmit: {
                             parse(quickEventStore.searchText)
                         }
+                    )
+                    .frame(maxWidth: .infinity)
+                    .accessibility(label: Text("Input event"))
 
                     Toggle("All day", isOn: $isAllDay)
                         .keyboardShortcut(.tab)
@@ -148,6 +151,65 @@ extension QuickEventView {
                 genErrorHaptic()
                 AlertManager.showWithError(error)
             }
+        }
+    }
+}
+
+private struct InlinePredictionTextField: UIViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    let onSubmit: () -> Void
+
+    func makeUIView(context: Context) -> UITextField {
+        let textField = UITextField()
+        textField.delegate = context.coordinator
+        textField.addTarget(context.coordinator, action: #selector(Coordinator.textDidChange), for: .editingChanged)
+        textField.font = .regularFontWithSize(18)
+        textField.textColor = .appDark
+        textField.autocorrectionType = .yes
+        textField.returnKeyType = .done
+        textField.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [
+                .font: UIFont.regularFontWithSize(18),
+                .foregroundColor: UIColor.placeholderText
+            ]
+        )
+        textField.accessibilityLabel = NSLocalizedString("Input event", comment: "")
+        textField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        textField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        if #available(iOS 17.0, *) {
+            textField.inlinePredictionType = .yes
+        }
+        return textField
+    }
+
+    func updateUIView(_ textField: UITextField, context: Context) {
+        context.coordinator.parent = self
+        if textField.text != text {
+            textField.text = text
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: InlinePredictionTextField
+
+        init(_ parent: InlinePredictionTextField) {
+            self.parent = parent
+        }
+
+        @objc func textDidChange(_ textField: UITextField) {
+            parent.text = textField.text ?? ""
+        }
+
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            textField.resignFirstResponder()
+            parent.onSubmit()
+            return false
         }
     }
 }
