@@ -9,8 +9,12 @@
 import Foundation
 
 extension FileManager {
-    // swiftlint:disable:next force_unwrapping
-    static let appGroupContainerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.vinhnx.Clendar")!
+    // Optional: the App Group container is nil when entitlements are
+    // missing (e.g. sideloaded builds). Never force-unwrap here: a crash
+    // in the widget extension renders as a blank/white widget (issue #268).
+    static var appGroupContainerURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.vinhnx.Clendar")
+    }
 }
 
 extension FileManager {

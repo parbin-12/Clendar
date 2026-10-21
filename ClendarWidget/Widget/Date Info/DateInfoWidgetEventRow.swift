@@ -11,20 +11,19 @@ import SwiftUI
 import ClendarTheme
 
 struct WidgetEventRow: View {
-    @Environment(\.isFocused) var isFocused
-
 	var id = UUID()
 	let event: ClendarEvent
 	var travelSeconds: TimeInterval?
 	var travelMode: TravelMode = .car
 
 	var body: some View {
+		// NOTE: no animation/scaleEffect/isFocused here. Widgets render as
+		// static snapshots on iOS 17; animation modifiers can blank the
+		// widget (white screen, issue #268).
 		HStack(spacing: 5) {
 			WidgetEventColorBar(event: event)
 			WidgetEventRowLabel(event: event, travelSeconds: travelSeconds, travelMode: travelMode)
 		}
-        .scaleEffect(isFocused ? 1.2 : 1)
-        .animation(.easeInOut, value: isFocused)
 	}
 }
 

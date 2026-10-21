@@ -25,29 +25,33 @@ struct DateInfoWidgetTimelineProvider: TimelineProvider {
 
         let currentDate = Date()
 
-        // swiftlint:disable:next force_unwrapping
-        let interval = Calendar.autoupdatingCurrent.date(byAdding: .minute, value: 5, to: currentDate)!
+        // Never force-unwrap in the extension: a crash renders as a
+        // blank/white widget with no retry until the next reload (issue #268).
+        guard let interval = Calendar.autoupdatingCurrent.date(byAdding: .minute, value: 5, to: currentDate) else {
+            completion(Timeline(entries: [WidgetEntry(date: currentDate)], policy: .after(currentDate.addingTimeInterval(5 * 60))))
+            return
+        }
 
         Task {
-            var entries = [WidgetEntry]()
+            // Event fetch failure still completes with an empty list so the
+            // date grid always renders instead of going white.
             let events = (try? await Shift.shared.fetchEventsRangeUntilEndOfDay(from: currentDate)) ?? []
             let clendarEvents = events.compactMap(ClendarEvent.init)
-            var entry = WidgetEntry(date: interval, events: clendarEvents)
+            var entry = WidgetEntry(date: currentDate, events: clendarEvents)
             // Travel times are best effort. Any failure leaves the entry
             // without them and the rows render as before (issue #176).
             let mode = widgetTravelMode()
             entry.travelMode = mode
             entry.travelTimes = await TravelTimeProvider.travelTimes(for: events, mode: mode)
-            entries.append(entry)
-
-            let timeline = Timeline(entries: entries, policy: .after(interval))
+            let timeline = Timeline(entries: [entry], policy: .after(interval))
             completion(timeline)
         }
     }
 
     /// Travel mode chosen in Settings, shared via the app group file.
     private func widgetTravelMode() -> TravelMode {
-        let url = FileManager.appGroupContainerURL.appendingPathComponent(FileManager.travelMode)
+        guard let containerURL = FileManager.appGroupContainerURL else { return TravelMode.defaultValue }
+        let url = containerURL.appendingPathComponent(FileManager.travelMode)
         guard let value = try? String(contentsOf: url, encoding: .utf8) else {
             return TravelMode.defaultValue
         }
